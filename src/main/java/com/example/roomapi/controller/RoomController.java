@@ -1,6 +1,7 @@
 package com.example.roomapi.controller;
 
 import com.example.roomapi.model.Room;
+import com.example.roomapi.model.Users;
 import com.example.roomapi.service.RoomService;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,5 +33,13 @@ public class RoomController {
         roomService.deleteRoom(id);
     }
 
+    public static class AddUserRequest {
+        public String name;
+    }
+
+    @PostMapping("/{roomId}/users")
+    public Users addUserToRoom(@PathVariable UUID roomId, @RequestBody AddUserRequest request) {
+        return roomService.addUserToRoom(roomId, request.name);
+    }
 
 }

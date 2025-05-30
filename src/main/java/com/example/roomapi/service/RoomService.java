@@ -1,7 +1,10 @@
 package com.example.roomapi.service;
 
 import com.example.roomapi.model.Room;
+import com.example.roomapi.model.Users;
 import com.example.roomapi.repository.RoomRepository;
+import com.example.roomapi.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,5 +32,13 @@ public class RoomService {
         roomRepository.deleteById(id);
     }
 
+    @Autowired
+    private UserRepository userRepository;
 
+    public Users addUserToRoom(UUID roomId, String name) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        Users user = new Users(name, room);
+        return userRepository.save(user);
+    }
 }
