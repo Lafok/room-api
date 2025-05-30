@@ -42,4 +42,11 @@ public class RoomController {
         return roomService.addUserToRoom(roomId, request.name);
     }
 
+    //GET users
+    @GetMapping("/{roomId}/users")
+    public List<Users> getUsersInRoom(@PathVariable UUID roomId) {
+        return roomService.getUsersInRoom(roomId);
+    }
+
+
 }

@@ -41,4 +41,21 @@ public class RoomService {
         Users user = new Users(name, room);
         return userRepository.save(user);
     }
+
+    // GET users
+    public List<Users> getUsersInRoom(UUID roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Room not found"));
+        return room.getUsers();
+    }
+
+    // DEL users
+    public void deleteUser(UUID userId) {
+        userRepository.deleteById(userId);
+    }
+
+
+
+
+
 }
