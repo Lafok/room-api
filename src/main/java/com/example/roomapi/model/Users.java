@@ -46,4 +46,17 @@ public class Users {
     public void setRoom(Room room) {
         this.room = room;
     }
+
+    //user status
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
+    }
+    public UserStatus getStatus() {
+        return status;
+    }
+
 }
