@@ -7,13 +7,20 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
+@Table(name = "room", uniqueConstraints = {
+        @UniqueConstraint(columnNames = "name")
+})
 public class Room {
 
     @Id
     @GeneratedValue
     private UUID id;
 
+    @Column(nullable = false, unique = true)
     private String name;
+
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Users> users = new ArrayList<>();
 
     // Constructors
     public Room() {
@@ -23,7 +30,7 @@ public class Room {
         this.name = name;
     }
 
-    // Getters & Setters
+    // Getters and Setters
     public UUID getId() {
         return id;
     }
@@ -39,9 +46,6 @@ public class Room {
     public void setName(String name) {
         this.name = name;
     }
-
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Users> users = new ArrayList<>();
 
     public List<Users> getUsers() {
         return users;

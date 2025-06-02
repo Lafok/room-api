@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -48,5 +49,20 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
+    @PostMapping
+    public ResponseEntity<?> createUser(@RequestParam String name, @RequestParam UUID roomId) {
+        try {
+            Users createdUser = usersService.createUser(name, roomId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Room not found");
+        }
+    }
 
+    @GetMapping("/{roomId}/users")
+    public List<Users> getUsersInRoom(@PathVariable UUID roomId) {
+        return roomService.getUsersInRoom(roomId);
+    }
 }

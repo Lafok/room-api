@@ -19,10 +19,7 @@ public class RoomService {
         this.roomRepository = roomRepository;
     }
 
-    public Room createRoom(String name) {
-        Room room = new Room(name);
-        return roomRepository.save(room);
-    }
+
 
     public List<Room> getAllRooms() {
         return roomRepository.findAll();
@@ -54,6 +51,13 @@ public class RoomService {
         userRepository.deleteById(userId);
     }
 
+    public Room createRoom(String name) {
+        if (roomRepository.existsByName(name)) {
+            throw new IllegalStateException("Room with this name already exists");
+        }
+        Room room = new Room(name);
+        return roomRepository.save(room);
+    }
 
 
 
