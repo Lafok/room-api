@@ -24,4 +24,13 @@ public class UsersService {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
+
+    // user status
+    public void setUserStatus(UUID userId, UserStatus status) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setStatus(status);
+        userRepository.save(user);
+    }
+
 }
