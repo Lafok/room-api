@@ -31,8 +31,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/roomdb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      TELEGRAM_BOT_USERNAME: ruummanager_bot
-      TELEGRAM_BOT_TOKEN: "YOUR_TOKEN_HERE"
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       - db
 

@@ -13,7 +13,4 @@ docker-compose up -d
 #### Login: `admin@admin.com`  
 #### Password: `admin`
 
-### Git Ignore For Tokens
-```bash
-    git update-index --assume-unchanged src/main/resources/application.properties
-```
+### Paste Tokens ONLY in `.env`
