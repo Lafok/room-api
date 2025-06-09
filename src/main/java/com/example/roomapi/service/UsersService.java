@@ -46,4 +46,28 @@ public class UsersService {
         Users user = new Users(name, room);
         return userRepository.save(user);
     }
+
+    public void removeByName(String name) {
+        Users user = userRepository.findByName(name)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userRepository.delete(user);
+    }
+
+    public void setStatusByName(String name, UserStatus status) {
+        Users user = userRepository.findByName(name)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setStatus(status);
+        userRepository.save(user);
+    }
+
+
+    //for telegram, unique name
+    public void addUser(Users user) {
+        Optional<Users> existing = userRepository.findByName(user.getName());
+        if (existing.isPresent()) {
+            throw new RuntimeException("user with this name already exists");
+        }
+        userRepository.save(user);
+    }
+
 }

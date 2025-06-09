@@ -60,6 +60,12 @@ public class RoomService {
     }
 
 
+    public Room getOrCreateRoom(String name) {
+        return roomRepository.findByName(name).orElseGet(() -> {
+            Room room = new Room(name);
+            return roomRepository.save(room);
+        });
+    }
 
 
 }
