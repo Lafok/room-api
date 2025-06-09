@@ -96,17 +96,21 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    @Override
-    public String getBotUsername() {
-        return "roommanager_bot";
-    }
+    @Value("${telegram.bot.username}")
+    private String botUsername;
 
     @Value("${telegram.bot.token}")
     private String botToken;
 
     @Override
+    public String getBotUsername() {
+        return botUsername;
+    }
+
+    @Override
     public String getBotToken() {
         return botToken;
     }
+
 }
 

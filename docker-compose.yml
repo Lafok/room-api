@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   db:
     image: postgres:15
@@ -19,6 +21,18 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "8888:80"
+    depends_on:
+      - db
+
+  room-bot:
+    build: .
+    container_name: ruummanager_bot
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/roomdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      TELEGRAM_BOT_USERNAME: ruummanager_bot
+      TELEGRAM_BOT_TOKEN: "YOUR_TOKEN_HERE"
     depends_on:
       - db
 
