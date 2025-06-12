@@ -26,10 +26,6 @@ public class RoomController {
         return roomService.getAllRooms();
     }
 
-    @DeleteMapping("/{id}")
-    public void deleteRoom(@PathVariable UUID id) {
-        roomService.deleteRoom(id);
-    }
 
     public static class AddUserRequest {
         public String name;

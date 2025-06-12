@@ -12,6 +12,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
@@ -21,13 +23,22 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     private static final String ROOMS_BUTTON = "📋 Rooms";
     private static final String USERS_BUTTON = "👥 Users";
     private static final String HELP_BUTTON = "❓ Help";
+    private static final String CREATE_ROOM_BUTTON = "➕ Create Room";
+    private static final String DELETE_ROOM_BUTTON = "🗑️ Delete Room";
+    private static final String CANCEL_BUTTON = "❌ Cancel";
 
+    private enum ConversationState {
+        DEFAULT,
+        AWAITING_ROOM_NAME_TO_CREATE,
+        AWAITING_ROOM_NAME_TO_DELETE
+    }
+
+    private final Map<String, ConversationState> userState = new ConcurrentHashMap<>();
     private final UsersService usersService;
     private final RoomService roomService;
 
     @Value("${telegram.bot.username}")
     private String botUsername;
-
     @Value("${telegram.bot.token}")
     private String botToken;
 
@@ -37,14 +48,9 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     }
 
     @Override
-    public String getBotUsername() {
-        return botUsername;
-    }
-
+    public String getBotUsername() { return botUsername; }
     @Override
-    public String getBotToken() {
-        return botToken;
-    }
+    public String getBotToken() { return botToken; }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -53,58 +59,92 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
-     * Handles all incoming text messages, routing them to the correct logic.
-     * This is the main router for the bot's functionality.
-     */
     private void handleTextCommand(Update update) {
         final String chatId = update.getMessage().getChatId().toString();
         final String messageText = update.getMessage().getText().trim();
-        final String[] parts = messageText.split(" ");
-        final String command = parts[0];
+
+        ConversationState currentState = userState.getOrDefault(chatId, ConversationState.DEFAULT);
+
+        if (messageText.equals(CANCEL_BUTTON)) {
+            userState.put(chatId, ConversationState.DEFAULT);
+            sendMessage(chatId, "✅ Action cancelled.");
+            return;
+        }
 
         String response;
         try {
-            // First, handle exact matches for buttons and simple commands
-            switch (messageText) {
-                case "/start":
-                    response = "👋 *Welcome to RoomAPI!*\n\nUse the menu below to navigate the bot.";
+            switch (currentState) {
+                case AWAITING_ROOM_NAME_TO_CREATE:
+                    response = handleRoomCreation(chatId, messageText);
                     break;
-                case ROOMS_BUTTON:
-                    response = listAllRooms();
+                case AWAITING_ROOM_NAME_TO_DELETE:
+                    response = handleRoomDeletion(chatId, messageText);
                     break;
-                case USERS_BUTTON:
-                    response = listAllUsers();
-                    break;
-                case HELP_BUTTON:
-                    response = getHelpText();
-                    break;
+                case DEFAULT:
                 default:
-                    // If no exact match, check for commands with arguments
-                    switch (command) {
-                        case "/join":
-                            response = joinRoom(parts);
-                            break;
-                        case "/leave":
-                            response = leaveRoom(parts);
-                            break;
-                        case "/status":
-                            response = changeUserStatus(parts);
-                            break;
-                        default:
-                            response = "❌ Unknown command. Please use the menu below or type /help.";
-                    }
+                    response = handleDefaultState(chatId, messageText);
+                    break;
             }
         } catch (IllegalArgumentException e) {
             response = "⚠️ Invalid command format. " + e.getMessage();
         } catch (Exception e) {
             response = "🚨 An error occurred: " + e.getMessage();
         }
-
         sendMessage(chatId, response);
     }
 
-    // --- Command Logic Methods (for better organization) ---
+    /**
+     * Handles commands when the user is not in a specific conversation flow.
+     * THIS IS THE CORRECTED METHOD.
+     */
+    private String handleDefaultState(String chatId, String messageText) {
+        // First, handle exact matches for buttons and simple commands by switching on the FULL message text.
+        switch (messageText) {
+            case "/start":
+                return "👋 *Welcome to RoomAPI!*\n\nUse the menu below to navigate the bot.";
+            case ROOMS_BUTTON:
+                return listAllRooms();
+            case USERS_BUTTON:
+                return listAllUsers();
+            case HELP_BUTTON:
+                return getHelpText();
+            case CREATE_ROOM_BUTTON:
+                userState.put(chatId, ConversationState.AWAITING_ROOM_NAME_TO_CREATE);
+                return "✍️ Please enter the name for the new room.";
+            case DELETE_ROOM_BUTTON:
+                userState.put(chatId, ConversationState.AWAITING_ROOM_NAME_TO_DELETE);
+                return "🗑️ Please enter the name of the room you want to delete.";
+            default:
+                // If no exact match, it might be a command with arguments.
+                // Now we split the message and check the FIRST PART.
+                final String[] parts = messageText.split(" ");
+                final String command = parts[0];
+                switch (command) {
+                    case "/join":
+                        return joinRoom(parts);
+                    case "/leave":
+                        return leaveRoom(parts);
+                    case "/status":
+                        return changeUserStatus(parts);
+                    default:
+                        return "❌ Unknown command. Please use the menu below or type /help.";
+                }
+        }
+    }
+
+    private String handleRoomCreation(String chatId, String roomName) {
+        roomService.createRoom(roomName);
+        userState.put(chatId, ConversationState.DEFAULT); // Reset state
+        return "✅ Room '" + roomName + "' created successfully!";
+    }
+
+    private String handleRoomDeletion(String chatId, String roomName) {
+        roomService.deleteRoomByName(roomName);
+        userState.put(chatId, ConversationState.DEFAULT); // Reset state
+        return "✅ Room '" + roomName + "' has been deleted.";
+    }
+
+    // --- FILLED IN Command Logic Methods ---
 
     private String listAllRooms() {
         List<Room> rooms = roomService.getAllRooms();
@@ -167,6 +207,8 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                 *Buttons:*
                 `📋 Rooms` - List all available rooms.
                 `👥 Users` - List all users and their status.
+                `➕ Create Room` - Start the process to create a new room.
+                `🗑️ Delete Room` - Start the process to delete an empty room.
                 
                 *Typed Commands:*
                 `/join <room> <name>` - Join a room.
@@ -175,12 +217,19 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                 """;
     }
 
-    // --- Telegram API Methods ---
+    // --- Telegram API Methods (unchanged) ---
 
     private void sendMessage(String chatId, String text) {
         SendMessage message = new SendMessage(chatId, text);
         message.setParseMode("Markdown");
-        message.setReplyMarkup(getMainMenuKeyboard());
+
+        ConversationState currentState = userState.getOrDefault(chatId, ConversationState.DEFAULT);
+        if (currentState == ConversationState.DEFAULT) {
+            message.setReplyMarkup(getMainMenuKeyboard());
+        } else {
+            message.setReplyMarkup(getCancelKeyboard());
+        }
+
         try {
             execute(message);
         } catch (Exception e) {
@@ -200,10 +249,29 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         row1.add(new KeyboardButton(USERS_BUTTON));
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton(HELP_BUTTON));
+        row2.add(new KeyboardButton(CREATE_ROOM_BUTTON));
+        row2.add(new KeyboardButton(DELETE_ROOM_BUTTON));
+
+        KeyboardRow row3 = new KeyboardRow();
+        row3.add(new KeyboardButton(HELP_BUTTON));
 
         keyboard.add(row1);
         keyboard.add(row2);
+        keyboard.add(row3);
+
+        markup.setKeyboard(keyboard);
+        return markup;
+    }
+
+    private ReplyKeyboardMarkup getCancelKeyboard() {
+        ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
+        markup.setResizeKeyboard(true);
+        markup.setOneTimeKeyboard(true);
+
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton(CANCEL_BUTTON));
+        keyboard.add(row);
 
         markup.setKeyboard(keyboard);
         return markup;

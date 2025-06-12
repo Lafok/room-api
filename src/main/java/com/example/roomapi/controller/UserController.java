@@ -49,6 +49,7 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
+
     @PostMapping
     public ResponseEntity<?> createUser(@RequestParam String name, @RequestParam UUID roomId) {
         try {

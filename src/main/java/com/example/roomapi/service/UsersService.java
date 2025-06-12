@@ -70,6 +70,7 @@ public class UsersService {
         }
         userRepository.save(user);
     }
+
     public boolean existsByName(String name) {
         return userRepository.existsByName(name);
     }
