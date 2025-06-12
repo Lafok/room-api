@@ -7,6 +7,7 @@ import com.example.roomapi.repository.RoomRepository;
 import com.example.roomapi.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -68,6 +69,13 @@ public class UsersService {
             throw new RuntimeException("user with this name already exists");
         }
         userRepository.save(user);
+    }
+    public boolean existsByName(String name) {
+        return userRepository.existsByName(name);
+    }
+
+    public List<Users> getAllUsers() {
+        return userRepository.findAll();
     }
 
 }
