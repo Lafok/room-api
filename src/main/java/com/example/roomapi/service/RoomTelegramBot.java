@@ -26,31 +26,43 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     private static final String CREATE_ROOM_BUTTON = "➕ Create Room";
     private static final String DELETE_ROOM_BUTTON = "🗑️ Delete Room";
     private static final String CANCEL_BUTTON = "❌ Cancel";
+    private static final String ANGRY_CHAT_BUTTON = "🤬 Chat With Me"; // Your button
 
+
+    // --- MODIFICATION 1: Add the new state to the enum ---
     private enum ConversationState {
         DEFAULT,
         AWAITING_ROOM_NAME_TO_CREATE,
-        AWAITING_ROOM_NAME_TO_DELETE
+        AWAITING_ROOM_NAME_TO_DELETE,
+        AWAITING_ANGRY_CHAT // New state for your chat
     }
+
 
     private final Map<String, ConversationState> userState = new ConcurrentHashMap<>();
     private final UsersService usersService;
     private final RoomService roomService;
+    private final AngryChatService angryChatService; // You already have this, which is great!
 
     @Value("${telegram.bot.username}")
     private String botUsername;
     @Value("${telegram.bot.token}")
     private String botToken;
 
-    public RoomTelegramBot(UsersService usersService, RoomService roomService) {
+    public RoomTelegramBot(UsersService usersService, RoomService roomService, AngryChatService angryChatService) {
         this.usersService = usersService;
         this.roomService = roomService;
+        this.angryChatService = angryChatService;
     }
 
     @Override
-    public String getBotUsername() { return botUsername; }
+    public String getBotUsername() {
+        return botUsername;
+    }
+
     @Override
-    public String getBotToken() { return botToken; }
+    public String getBotToken() {
+        return botToken;
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -59,15 +71,17 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    // --- MODIFICATION 2: Update the main handler to include the new state ---
     private void handleTextCommand(Update update) {
         final String chatId = update.getMessage().getChatId().toString();
         final String messageText = update.getMessage().getText().trim();
 
         ConversationState currentState = userState.getOrDefault(chatId, ConversationState.DEFAULT);
 
+        // This cancel logic will now also work for the angry chat. No changes needed here.
         if (messageText.equals(CANCEL_BUTTON)) {
             userState.put(chatId, ConversationState.DEFAULT);
-            sendMessage(chatId, "✅ Action cancelled.");
+            sendMessage(chatId, "✅ Fine, whatever. Action cancelled.");
             return;
         }
 
@@ -79,6 +93,9 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                     break;
                 case AWAITING_ROOM_NAME_TO_DELETE:
                     response = handleRoomDeletion(chatId, messageText);
+                    break;
+                case AWAITING_ANGRY_CHAT: // Add the case for your new state
+                    response = handleAngryChat(messageText);
                     break;
                 case DEFAULT:
                 default:
@@ -93,12 +110,8 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         sendMessage(chatId, response);
     }
 
-    /**
-     * Handles commands when the user is not in a specific conversation flow.
-     * THIS IS THE CORRECTED METHOD.
-     */
+    // --- MODIFICATION 3: Update the default handler to listen for the new button ---
     private String handleDefaultState(String chatId, String messageText) {
-        // First, handle exact matches for buttons and simple commands by switching on the FULL message text.
         switch (messageText) {
             case "/start":
                 return "👋 *Welcome to RoomAPI!*\n\nUse the menu below to navigate the bot.";
@@ -114,9 +127,10 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
             case DELETE_ROOM_BUTTON:
                 userState.put(chatId, ConversationState.AWAITING_ROOM_NAME_TO_DELETE);
                 return "🗑️ Please enter the name of the room you want to delete.";
+            case ANGRY_CHAT_BUTTON: // Add a case for your new button
+                userState.put(chatId, ConversationState.AWAITING_ANGRY_CHAT);
+                return "😠 What do YOU want? Don't waste my time. (Type '❌ Cancel' to leave)";
             default:
-                // If no exact match, it might be a command with arguments.
-                // Now we split the message and check the FIRST PART.
                 final String[] parts = messageText.split(" ");
                 final String command = parts[0];
                 switch (command) {
@@ -134,18 +148,24 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
 
     private String handleRoomCreation(String chatId, String roomName) {
         roomService.createRoom(roomName);
-        userState.put(chatId, ConversationState.DEFAULT); // Reset state
+        userState.put(chatId, ConversationState.DEFAULT);
         return "✅ Room '" + roomName + "' created successfully!";
     }
 
     private String handleRoomDeletion(String chatId, String roomName) {
         roomService.deleteRoomByName(roomName);
-        userState.put(chatId, ConversationState.DEFAULT); // Reset state
+        userState.put(chatId, ConversationState.DEFAULT);
         return "✅ Room '" + roomName + "' has been deleted.";
     }
 
-    // --- FILLED IN Command Logic Methods ---
+    // --- MODIFICATION 4: Add the handler method that calls your service ---
+    private String handleAngryChat(String messageText) {
+        // This method simply passes the user's message to the service.
+        return angryChatService.getAngryResponse(messageText);
+    }
 
+
+    // --- UNCHANGED Command Logic Methods ---
     private String listAllRooms() {
         List<Room> rooms = roomService.getAllRooms();
         if (rooms.isEmpty()) {
@@ -209,6 +229,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                 `👥 Users` - List all users and their status.
                 `➕ Create Room` - Start the process to create a new room.
                 `🗑️ Delete Room` - Start the process to delete an empty room.
+                `🤬 Chat With Me` - Start a very unhelpful chat.
                 
                 *Typed Commands:*
                 `/join <room> <name>` - Join a room.
@@ -217,16 +238,21 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                 """;
     }
 
-    // --- Telegram API Methods (unchanged) ---
-
+    // --- UNCHANGED Telegram API Methods (unchanged) ---
     private void sendMessage(String chatId, String text) {
         SendMessage message = new SendMessage(chatId, text);
-        message.setParseMode("Markdown");
-
+        // We don't want Markdown parsing for the angry chat, as the AI might use characters
+        // that conflict with it. We can disable it when in that state.
         ConversationState currentState = userState.getOrDefault(chatId, ConversationState.DEFAULT);
+        if (currentState != ConversationState.AWAITING_ANGRY_CHAT) {
+            message.setParseMode("Markdown");
+        }
+
+
         if (currentState == ConversationState.DEFAULT) {
             message.setReplyMarkup(getMainMenuKeyboard());
         } else {
+            // This now correctly shows the cancel keyboard for room creation, deletion, AND the angry chat
             message.setReplyMarkup(getCancelKeyboard());
         }
 
@@ -237,6 +263,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    // --- MODIFICATION 5: Add the new button to the main keyboard ---
     private ReplyKeyboardMarkup getMainMenuKeyboard() {
         ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
         markup.setSelective(true);
@@ -253,7 +280,9 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         row2.add(new KeyboardButton(DELETE_ROOM_BUTTON));
 
         KeyboardRow row3 = new KeyboardRow();
+        row3.add(new KeyboardButton(ANGRY_CHAT_BUTTON)); // Add the new button here
         row3.add(new KeyboardButton(HELP_BUTTON));
+
 
         keyboard.add(row1);
         keyboard.add(row2);

@@ -1,36 +1,61 @@
+// This block declares the plugins your project uses. It should be self-contained.
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.4.5'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '3.3.1' // Using a stable version
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
+// This is for project metadata
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
+// This defines the Java version for your project
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
+// This block tells Gradle where to look for dependencies (e.g., Maven Central repository)
 repositories {
-	mavenCentral()
+    mavenCentral()
+    google()
 }
 
+// THIS IS THE CORRECT PLACE for the dependencies block. It is a top-level element.
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
-	runtimeOnly 'org.postgresql:postgresql'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Spring Data JPA for database interaction
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-//	telegram
-	implementation 'org.telegram:telegrambots:6.5.0'
-	implementation 'org.telegram:telegrambots-spring-boot-starter:6.5.0'
+    // Core Spring Boot dependency for web apps and REST APIs
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
+
+    // Example database driver (PostgreSQL) - replace if you use another DB
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // For testing
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // For development convenience (auto-restarts)
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+    // Telegram
+    implementation 'org.telegram:telegrambots:6.5.0'
+    implementation 'org.telegram:telegrambots-spring-boot-starter:6.5.0'
+
+    // Gemini/Vertex AI Dependencies
+    implementation platform('com.google.cloud:libraries-bom:26.44.0')
+// https://mvnrepository.com/artifact/com.google.cloud/google-cloud-vertexai
+    implementation 'com.google.cloud:google-cloud-vertexai:1.24.0'
+// https://mvnrepository.com/artifact/com.google.auth/google-auth-library-oauth2-http
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.37.0'
 }
 
 
+// This configures the test task
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
