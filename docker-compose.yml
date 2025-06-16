@@ -33,6 +33,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      GEMINI_KEY: ${GEMINI_KEY}
     depends_on:
       - db
 

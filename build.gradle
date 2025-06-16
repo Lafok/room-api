@@ -28,6 +28,12 @@ dependencies {
 //	telegram
 	implementation 'org.telegram:telegrambots:6.5.0'
 	implementation 'org.telegram:telegrambots-spring-boot-starter:6.5.0'
+
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+
+	implementation 'me.paulschwarz:spring-dotenv:3.0.0'
+
 }
 
 

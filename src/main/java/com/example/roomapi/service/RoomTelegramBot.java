@@ -10,9 +10,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -26,29 +24,34 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     private static final String CREATE_ROOM_BUTTON = "➕ Create Room";
     private static final String DELETE_ROOM_BUTTON = "🗑️ Delete Room";
     private static final String CANCEL_BUTTON = "❌ Cancel";
+    private static final String GEMINI_BUTTON = "🤖 Chat with Gemini";
 
     private enum ConversationState {
         DEFAULT,
         AWAITING_ROOM_NAME_TO_CREATE,
-        AWAITING_ROOM_NAME_TO_DELETE
+        AWAITING_ROOM_NAME_TO_DELETE,
+        AWAITING_GEMINI_MESSAGE // ✅ NEW
     }
 
     private final Map<String, ConversationState> userState = new ConcurrentHashMap<>();
     private final UsersService usersService;
     private final RoomService roomService;
+    private final GeminiService geminiService; // ✅ NEW
 
     @Value("${telegram.bot.username}")
     private String botUsername;
     @Value("${telegram.bot.token}")
     private String botToken;
 
-    public RoomTelegramBot(UsersService usersService, RoomService roomService) {
+    public RoomTelegramBot(UsersService usersService, RoomService roomService, GeminiService geminiService) {
         this.usersService = usersService;
         this.roomService = roomService;
+        this.geminiService = geminiService; // ✅ NEW
     }
 
     @Override
     public String getBotUsername() { return botUsername; }
+
     @Override
     public String getBotToken() { return botToken; }
 
@@ -80,6 +83,9 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                 case AWAITING_ROOM_NAME_TO_DELETE:
                     response = handleRoomDeletion(chatId, messageText);
                     break;
+                case AWAITING_GEMINI_MESSAGE: // ✅ NEW
+                    response = handleGeminiQuery(chatId, messageText);
+                    break;
                 case DEFAULT:
                 default:
                     response = handleDefaultState(chatId, messageText);
@@ -93,12 +99,13 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         sendMessage(chatId, response);
     }
 
-    /**
-     * Handles commands when the user is not in a specific conversation flow.
-     * THIS IS THE CORRECTED METHOD.
-     */
+    private String handleGeminiQuery(String chatId, String messageText) {
+        userState.put(chatId, ConversationState.DEFAULT);
+        String geminiReply = geminiService.chatWithGemini(messageText);
+        return "🤖 *Gemini says:*\n" + geminiReply;
+    }
+
     private String handleDefaultState(String chatId, String messageText) {
-        // First, handle exact matches for buttons and simple commands by switching on the FULL message text.
         switch (messageText) {
             case "/start":
                 return "👋 *Welcome to RoomAPI!*\n\nUse the menu below to navigate the bot.";
@@ -114,11 +121,12 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
             case DELETE_ROOM_BUTTON:
                 userState.put(chatId, ConversationState.AWAITING_ROOM_NAME_TO_DELETE);
                 return "🗑️ Please enter the name of the room you want to delete.";
+            case GEMINI_BUTTON:
+                userState.put(chatId, ConversationState.AWAITING_GEMINI_MESSAGE);
+                return "💬 What would you like to ask Gemini?";
             default:
-                // If no exact match, it might be a command with arguments.
-                // Now we split the message and check the FIRST PART.
-                final String[] parts = messageText.split(" ");
-                final String command = parts[0];
+                String[] parts = messageText.split(" ");
+                String command = parts[0];
                 switch (command) {
                     case "/join":
                         return joinRoom(parts);
@@ -134,17 +142,15 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
 
     private String handleRoomCreation(String chatId, String roomName) {
         roomService.createRoom(roomName);
-        userState.put(chatId, ConversationState.DEFAULT); // Reset state
+        userState.put(chatId, ConversationState.DEFAULT);
         return "✅ Room '" + roomName + "' created successfully!";
     }
 
     private String handleRoomDeletion(String chatId, String roomName) {
         roomService.deleteRoomByName(roomName);
-        userState.put(chatId, ConversationState.DEFAULT); // Reset state
+        userState.put(chatId, ConversationState.DEFAULT);
         return "✅ Room '" + roomName + "' has been deleted.";
     }
-
-    // --- FILLED IN Command Logic Methods ---
 
     private String listAllRooms() {
         List<Room> rooms = roomService.getAllRooms();
@@ -203,21 +209,20 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     private String getHelpText() {
         return """
                 *⚙️ Available Commands*
-                
+
                 *Buttons:*
                 `📋 Rooms` - List all available rooms.
                 `👥 Users` - List all users and their status.
                 `➕ Create Room` - Start the process to create a new room.
                 `🗑️ Delete Room` - Start the process to delete an empty room.
-                
+                `🤖 Chat with Gemini` - Ask AI a question.
+
                 *Typed Commands:*
                 `/join <room> <name>` - Join a room.
                 `/leave <name>` - Leave your room.
                 `/status <name> <ACTIVE|INACTIVE>` - Change a user's status.
                 """;
     }
-
-    // --- Telegram API Methods (unchanged) ---
 
     private void sendMessage(String chatId, String text) {
         SendMessage message = new SendMessage(chatId, text);
@@ -254,6 +259,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
 
         KeyboardRow row3 = new KeyboardRow();
         row3.add(new KeyboardButton(HELP_BUTTON));
+        row3.add(new KeyboardButton(GEMINI_BUTTON));
 
         keyboard.add(row1);
         keyboard.add(row2);
