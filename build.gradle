@@ -25,10 +25,15 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-//	telegram
+	//telegram
 	implementation 'org.telegram:telegrambots:6.5.0'
 	implementation 'org.telegram:telegrambots-spring-boot-starter:6.5.0'
-}
+
+
+	//gemini
+
+// https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-vertex-ai-gemini-spring-boot-starter
+	implementation 'org.springframework.ai:spring-ai-vertex-ai-gemini-spring-boot-starter:1.0.0-M6'}
 
 
 tasks.named('test') {

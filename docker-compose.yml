@@ -33,6 +33,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+      GCP_LOCATION: ${GCP_LOCATION}
+    volumes:
+#          if using Linux/macOS
+#        - ~/.config/gcloud:/root/.config/gcloud
+#          if using Windows
+      - /c/Users/pavel/AppData/Roaming/gcloud:/root/.config/gcloud
     depends_on:
       - db
 
