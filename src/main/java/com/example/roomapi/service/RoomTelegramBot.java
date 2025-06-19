@@ -227,31 +227,38 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
 
     // This method now dynamically selects the correct keyboard
     private void sendMessage(String chatId, String text) {
-        SendMessage message = new SendMessage(chatId, text);
-        // Gemini responses can be long and contain markdown that needs to be parsed.
-        message.setParseMode("Markdown");
+        // 1. Start with a mutable builder
+        SendMessage.SendMessageBuilder messageBuilder = SendMessage.builder()
+                .chatId(chatId)
+                .text(text);
 
+        // 2. Conditionally add the keyboard to the builder
         ConversationState currentState = userState.getOrDefault(chatId, ConversationState.DEFAULT);
         switch (currentState) {
             case DEFAULT:
-                message.setReplyMarkup(getMainMenuKeyboard());
+                messageBuilder.replyMarkup(getMainMenuKeyboard());
                 break;
             case CHATTING_WITH_GEMINI:
-                message.setReplyMarkup(getGeminiChatKeyboard());
+                messageBuilder.replyMarkup(getGeminiChatKeyboard());
                 break;
             case AWAITING_ROOM_NAME_TO_CREATE:
             case AWAITING_ROOM_NAME_TO_DELETE:
-                message.setReplyMarkup(getCancelKeyboard());
+                messageBuilder.replyMarkup(getCancelKeyboard());
                 break;
         }
 
         try {
-            execute(message);
+            // 3. Build the first version of the message (with Markdown) and execute
+            SendMessage messageWithMarkdown = messageBuilder.parseMode("Markdown").build();
+            execute(messageWithMarkdown);
         } catch (Exception e) {
-            // If markdown parsing fails, send as plain text
+            // If markdown parsing fails, build a NEW message without it.
+            // This is cleaner than mutating the old one.
             try {
-                message.setParseMode(null);
-                execute(message);
+                // The builder already has the chatId, text, and replyMarkup set.
+                // We just call .build() again without setting parseMode.
+                SendMessage plainTextMessage = messageBuilder.parseMode(null).build(); // or just messageBuilder.build()
+                execute(plainTextMessage);
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
