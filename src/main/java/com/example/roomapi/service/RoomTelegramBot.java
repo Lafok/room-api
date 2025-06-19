@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Component
 public class RoomTelegramBot extends TelegramLongPollingBot {
 
-    // --- BUTTON CONSTANTS ---
+    // BUTTON CONSTANTS
     private static final String ROOMS_BUTTON = "📋 Rooms";
     private static final String USERS_BUTTON = "👥 Users";
     private static final String HELP_BUTTON = "❓ Help";
@@ -43,7 +43,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     private final Map<String, ConversationState> userState = new ConcurrentHashMap<>();
     private final UsersService usersService;
     private final RoomService roomService;
-    private final GeminiService geminiService; // NEW: Inject GeminiService
+    private final GeminiService geminiService; // Inject GeminiService
 
     @Value("${telegram.bot.username}")
     private String botUsername;
@@ -57,9 +57,14 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
     }
 
     @Override
-    public String getBotUsername() { return botUsername; }
+    public String getBotUsername() {
+        return botUsername;
+    }
+
     @Override
-    public String getBotToken() { return botToken; }
+    public String getBotToken() {
+        return botToken;
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -115,7 +120,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
      * Handles commands when the user is not in a specific conversation flow.
      */
     private String handleDefaultState(String chatId, String messageText) {
-        // First, handle exact matches for buttons and simple commands.
+        // handle exact matches for buttons and simple commands.
         switch (messageText) {
             case "/start":
                 return "👋 *Welcome to RoomAPI!*\n\nUse the menu below to navigate the bot.";
@@ -131,7 +136,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
             case DELETE_ROOM_BUTTON:
                 userState.put(chatId, ConversationState.AWAITING_ROOM_NAME_TO_DELETE);
                 return "🗑️ Please enter the name of the room you want to delete.";
-            // NEW: Handle Gemini Chat button press
+            // Handle Gemini Chat button press
             case GEMINI_CHAT_BUTTON:
                 userState.put(chatId, ConversationState.CHATTING_WITH_GEMINI);
                 return "🤖 You are now chatting with Gemini AI.\n\nAsk me anything! Type your message below or press 'Back to Main Menu' to exit.";
@@ -147,17 +152,12 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
                     case "/status":
                         return changeUserStatus(parts);
                     default:
-                        // If user is in default state and types random text, you can choose to send it to Gemini
-                        // or show an error. Let's show an error for now to keep things clean.
-                        // For a more ChatGPT-like experience, you could uncomment the next two lines.
-                        // userState.put(chatId, ConversationState.CHATTING_WITH_GEMINI);
-                        // return handleGeminiChat(chatId, messageText);
                         return "❌ Unknown command. Please use the menu below or type /help.";
                 }
         }
     }
 
-    // NEW: Method to handle the conversation with Gemini
+    //Method to handle the conversation with Gemini
     private String handleGeminiChat(String chatId, String message) {
         // You could add a "thinking..." message here for long-running queries if needed
         // sendTypingAction(chatId); // Example
@@ -176,18 +176,56 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         return "✅ Room '" + roomName + "' has been deleted.";
     }
 
-    // --- Command Logic Methods (Unchanged) ---
-    private String listAllRooms() { /* ... your existing code ... */ return roomService.getAllRooms().isEmpty() ? "There are no available rooms." : roomService.getAllRooms().stream().map(Room::getName).collect(Collectors.joining("\n• ", "Rooms:\n• ", "")); }
-    private String listAllUsers() { /* ... your existing code ... */ return usersService.getAllUsers().isEmpty() ? "There are no users in any room." : usersService.getAllUsers().stream().map(u -> String.format("%s (Room: %s, Status: %s)", u.getName(), u.getRoom().getName(), u.getStatus())).collect(Collectors.joining("\n• ", "Users:\n• ", "")); }
-    private String joinRoom(String[] parts) { /* ... your existing code ... */ if (parts.length < 3) throw new IllegalArgumentException("Format: /join <RoomName> <UserName>"); String roomName = parts[1]; String userName = parts[2]; if (usersService.existsByName(userName)) { return "The name '" + userName + "' is already taken."; } Room room = roomService.getOrCreateRoom(roomName); Users user = new Users(userName, room); usersService.addUser(user); return "✅ " + userName + " has joined the room '" + roomName + "'."; }
-    private String leaveRoom(String[] parts) { /* ... your existing code ... */ if (parts.length < 2) throw new IllegalArgumentException("Format: /leave <UserName>"); String userName = parts[1]; usersService.removeByName(userName); return "✅ " + userName + " has left the room."; }
-    private String changeUserStatus(String[] parts) { /* ... your existing code ... */ if (parts.length < 3) throw new IllegalArgumentException("Format: /status <UserName> <ACTIVE|INACTIVE>"); String targetUser = parts[1]; UserStatus status; try { status = UserStatus.valueOf(parts[2].toUpperCase()); } catch (IllegalArgumentException e) { return "❌ Invalid status. Please use ACTIVE or INACTIVE."; } usersService.setStatusByName(targetUser, status); return "✅ User '" + targetUser + "' status has been set to " + status + "."; }
-    private String getHelpText() { /* ... your existing code ... */ return "Help text..."; }
+    //
+    private String listAllRooms() {
+        return roomService.getAllRooms().isEmpty() ? "There are no available rooms." : roomService.getAllRooms().stream().map(Room::getName).collect(Collectors.joining("\n• ", "Rooms:\n• ", ""));
+    }
+
+    private String listAllUsers() {
+        return usersService.getAllUsers().isEmpty() ? "There are no users in any room." : usersService.getAllUsers().stream().map(u -> String.format("%s (Room: %s, Status: %s)", u.getName(), u.getRoom().getName(), u.getStatus())).collect(Collectors.joining("\n• ", "Users:\n• ", ""));
+    }
+
+    private String joinRoom(String[] parts) {
+        if (parts.length < 3) throw new IllegalArgumentException("Format: /join <RoomName> <UserName>");
+        String roomName = parts[1];
+        String userName = parts[2];
+        if (usersService.existsByName(userName)) {
+            return "The name '" + userName + "' is already taken.";
+        }
+        Room room = roomService.getOrCreateRoom(roomName);
+        Users user = new Users(userName, room);
+        usersService.addUser(user);
+        return "✅ " + userName + " has joined the room '" + roomName + "'.";
+    }
+
+    private String leaveRoom(String[] parts) {
+        if (parts.length < 2) throw new IllegalArgumentException("Format: /leave <UserName>");
+        String userName = parts[1];
+        usersService.removeByName(userName);
+        return "✅ " + userName + " has left the room.";
+    }
+
+    private String changeUserStatus(String[] parts) {
+        if (parts.length < 3) throw new IllegalArgumentException("Format: /status <UserName> <ACTIVE|INACTIVE>");
+        String targetUser = parts[1];
+        UserStatus status;
+        try {
+            status = UserStatus.valueOf(parts[2].toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return "❌ Invalid status. Please use ACTIVE or INACTIVE.";
+        }
+        usersService.setStatusByName(targetUser, status);
+        return "✅ User '" + targetUser + "' status has been set to " + status + ".";
+    }
+
+    private String getHelpText() {
+        return "Help text...";
+    }
 
 
-    // --- Telegram API Methods ---
+    // Telegram API Methods
 
-    // MODIFIED: This method now dynamically selects the correct keyboard
+    // This method now dynamically selects the correct keyboard
     private void sendMessage(String chatId, String text) {
         SendMessage message = new SendMessage(chatId, text);
         // Gemini responses can be long and contain markdown that needs to be parsed.
@@ -220,7 +258,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    // MODIFIED: Added Gemini Chat button to the main menu
+    // Added Gemini Chat button to the main menu
     private ReplyKeyboardMarkup getMainMenuKeyboard() {
         ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
         markup.setSelective(true);
@@ -239,21 +277,20 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         KeyboardRow row3 = new KeyboardRow();
         row3.add(new KeyboardButton(HELP_BUTTON));
 
-        // NEW: A dedicated row for the Gemini chat button
+        // A dedicated row for the Gemini chat button
         KeyboardRow row4 = new KeyboardRow();
         row4.add(new KeyboardButton(GEMINI_CHAT_BUTTON));
 
         keyboard.add(row1);
         keyboard.add(row2);
         keyboard.add(row3);
-        keyboard.add(row4); // Add the new row
+        keyboard.add(row4);
 
         markup.setKeyboard(keyboard);
         return markup;
     }
 
     private ReplyKeyboardMarkup getCancelKeyboard() {
-        // This is fine, but we'll create a more specific one for the chat
         ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
         markup.setResizeKeyboard(true);
         markup.setOneTimeKeyboard(true);
@@ -267,7 +304,7 @@ public class RoomTelegramBot extends TelegramLongPollingBot {
         return markup;
     }
 
-    // NEW: A dedicated keyboard for the Gemini chat interface
+    // A dedicated keyboard for the Gemini chat interface
     private ReplyKeyboardMarkup getGeminiChatKeyboard() {
         ReplyKeyboardMarkup markup = new ReplyKeyboardMarkup();
         markup.setResizeKeyboard(true);
